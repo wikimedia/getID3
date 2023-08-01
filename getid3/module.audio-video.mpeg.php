@@ -397,13 +397,17 @@ $PackedElementaryStream['additional_header_bytes'] = $additional_header_bytes;
 					$getid3_temp->openfile($this->getid3->filename, $this->getid3->info['filesize'], $this->getid3->fp);
 					$getid3_temp->info = $info;
 					$getid3_mp3 = new getid3_mp3($getid3_temp);
-					for ($i = 0; $i <= 7; $i++) {
+					for ($i = 0; $i <= 8; $i++) {
 						// some files have the MPEG-audio header 8 bytes after the end of the $00 $00 $01 $C0 signature, some have it up to 13 bytes (or more?) after
 						// I have no idea why or what the difference is, so this is a stupid hack.
 						// If anybody has any better idea of what's going on, please let me know - info@getid3.org
+						//
+						// Note that MPEG-1 muxed files sometimes have a 7 byte header if they have a PTS but no DTS.
+						// It might be nice to read the headers correctly per the above commented out code but for now
+						// starting the search one byte earlier than before works. -- bvibber@wikimedia.org
 						$getid3_temp->info = $info; // only overwrite real data if valid header found
-//echo 'audio at? '.($MPEGstreamBaseOffset + $StartCodeOffset + 4 + 8 + $i).'<br>';
-						if ($getid3_mp3->decodeMPEGaudioHeader($MPEGstreamBaseOffset + $StartCodeOffset + 4 + 8 + $i, $getid3_temp->info, false)) {
+//echo 'audio at? '.($MPEGstreamBaseOffset + $StartCodeOffset + 4 + 7 + $i).'<br>';
+						if ($getid3_mp3->decodeMPEGaudioHeader($MPEGstreamBaseOffset + $StartCodeOffset + 4 + 7 + $i, $getid3_temp->info, false)) {
 //echo 'yes!<br>';
 							$info = $getid3_temp->info;
 							$info['audio']['bitrate_mode'] = 'cbr';
