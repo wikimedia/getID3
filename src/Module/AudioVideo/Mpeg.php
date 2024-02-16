@@ -349,7 +349,7 @@ class Mpeg extends Handler
 					$ParsedAVchannels[$StartCodeValue] = $StartCodeValue;
 					// http://en.wikipedia.org/wiki/Packetized_elementary_stream
 					// http://dvd.sourceforge.net/dvdinfo/pes-hdr.html
-/*
+
 					$PackedElementaryStream = array();
 					if ($StartCodeValue >= 0xE0) {
 						$PackedElementaryStream['stream_type'] = 'video';
@@ -360,56 +360,79 @@ class Mpeg extends Handler
 					}
 					$PackedElementaryStream['packet_length'] = Utils::BigEndian2Int(substr($MPEGstreamData, $StartCodeOffset + 4, 2));
 
-					$bitstream = Utils::BigEndian2Bin(substr($MPEGstreamData, $StartCodeOffset + 6, 3)); // more may be needed below
-					$bitstreamoffset = 0;
+					$offset = $StartCodeOffset + 6;
+					$first = ord($MPEGstreamData[$offset]);
+					$marker2 = $first >> 6;
 
-					$PackedElementaryStream['marker_bits']               = self::readBitsFromStream($bitstream, $bitstreamoffset,  2); //  2 bits for marker_bits -- should be "10" = 2
-echo 'marker_bits = '.$PackedElementaryStream['marker_bits'].'<br>';
-					$PackedElementaryStream['scrambling_control']        = self::readBitsFromStream($bitstream, $bitstreamoffset,  2); //  2 bits for scrambling_control -- 00 implies not scrambled
-					$PackedElementaryStream['priority']                  = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: priority
-					$PackedElementaryStream['data_alignment_indicator']  = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: data_alignment_indicator -- 1 indicates that the PES packet header is immediately followed by the video start code or audio syncword
-					$PackedElementaryStream['copyright']                 = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: copyright -- 1 implies copyrighted
-					$PackedElementaryStream['original_or_copy']          = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: original_or_copy -- 1 implies original
-					$PackedElementaryStream['pts_flag']                  = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: pts_flag -- Presentation Time Stamp
-					$PackedElementaryStream['dts_flag']                  = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: dts_flag -- Decode Time Stamp
-					$PackedElementaryStream['escr_flag']                 = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: escr_flag -- Elementary Stream Clock Reference
-					$PackedElementaryStream['es_rate_flag']              = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: es_rate_flag -- Elementary Stream [data] Rate
-					$PackedElementaryStream['dsm_trick_mode_flag']       = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: dsm_trick_mode_flag -- DSM trick mode - not used by DVD
-					$PackedElementaryStream['additional_copy_info_flag'] = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: additional_copy_info_flag
-					$PackedElementaryStream['crc_flag']                  = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: crc_flag
-					$PackedElementaryStream['extension_flag']            = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: extension_flag
-					$PackedElementaryStream['pes_remain_header_length']  = self::readBitsFromStream($bitstream, $bitstreamoffset,  8); //  1 bit flag: priority
+					if ($marker2 == 2) {
+						// MPEG-2 program stream
 
-					$additional_header_bytes = 0;
-					$additional_header_bytes += ($PackedElementaryStream['pts_flag']                  ? 5 : 0);
-					$additional_header_bytes += ($PackedElementaryStream['dts_flag']                  ? 5 : 0);
-					$additional_header_bytes += ($PackedElementaryStream['escr_flag']                 ? 6 : 0);
-					$additional_header_bytes += ($PackedElementaryStream['es_rate_flag']              ? 3 : 0);
-					$additional_header_bytes += ($PackedElementaryStream['additional_copy_info_flag'] ? 1 : 0);
-					$additional_header_bytes += ($PackedElementaryStream['crc_flag']                  ? 2 : 0);
-					$additional_header_bytes += ($PackedElementaryStream['extension_flag']            ? 1 : 0);
-$PackedElementaryStream['additional_header_bytes'] = $additional_header_bytes;
-					$bitstream .= Utils::BigEndian2Bin(substr($MPEGstreamData, $StartCodeOffset + 9, $additional_header_bytes));
+						$bitstream = Utils::BigEndian2Bin(substr($MPEGstreamData, $offset, 3)); // more may be needed below
+						$bitstreamoffset = 0;
 
+						$PackedElementaryStream['marker_bits']               = self::readBitsFromStream($bitstream, $bitstreamoffset,  2); //  2 bits for marker_bits -- should be "10" = 2
+						$PackedElementaryStream['scrambling_control']        = self::readBitsFromStream($bitstream, $bitstreamoffset,  2); //  2 bits for scrambling_control -- 00 implies not scrambled
+						$PackedElementaryStream['priority']                  = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: priority
+						$PackedElementaryStream['data_alignment_indicator']  = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: data_alignment_indicator -- 1 indicates that the PES packet header is immediately followed by the video start code or audio syncword
+						$PackedElementaryStream['copyright']                 = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: copyright -- 1 implies copyrighted
+						$PackedElementaryStream['original_or_copy']          = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: original_or_copy -- 1 implies original
+						$PackedElementaryStream['pts_flag']                  = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: pts_flag -- Presentation Time Stamp
+						$PackedElementaryStream['dts_flag']                  = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: dts_flag -- Decode Time Stamp
+						$PackedElementaryStream['escr_flag']                 = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: escr_flag -- Elementary Stream Clock Reference
+						$PackedElementaryStream['es_rate_flag']              = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: es_rate_flag -- Elementary Stream [data] Rate
+						$PackedElementaryStream['dsm_trick_mode_flag']       = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: dsm_trick_mode_flag -- DSM trick mode - not used by DVD
+						$PackedElementaryStream['additional_copy_info_flag'] = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: additional_copy_info_flag
+						$PackedElementaryStream['crc_flag']                  = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: crc_flag
+						$PackedElementaryStream['extension_flag']            = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: extension_flag
+						$PackedElementaryStream['pes_remain_header_length']  = self::readBitsFromStream($bitstream, $bitstreamoffset,  8); //  1 bit flag: priority
+
+						$additional_header_bytes = 0;
+						$additional_header_bytes += ($PackedElementaryStream['pts_flag']                  ? 5 : 0);
+						$additional_header_bytes += ($PackedElementaryStream['dts_flag']                  ? 5 : 0);
+						$additional_header_bytes += ($PackedElementaryStream['escr_flag']                 ? 6 : 0);
+						$additional_header_bytes += ($PackedElementaryStream['es_rate_flag']              ? 3 : 0);
+						$additional_header_bytes += ($PackedElementaryStream['additional_copy_info_flag'] ? 1 : 0);
+						$additional_header_bytes += ($PackedElementaryStream['crc_flag']                  ? 2 : 0);
+						$additional_header_bytes += ($PackedElementaryStream['extension_flag']            ? 1 : 0);
+						$PackedElementaryStream['additional_header_bytes'] = $additional_header_bytes;
+
+						$bitstream .= Utils::BigEndian2Bin(substr($MPEGstreamData, $offset, $additional_header_bytes));
+
+						$offset += 3; // MPEG-2 extension fixed header
+						$offset += $PackedElementaryStream['pes_remain_header_length'];
+					} else {
+						// MPEG-1 program stream
+
+						// Optional P-STD buffer size
+						$marker2 = ord($MPEGstreamData[$offset]) >> 2;
+						if ($marker2 == 1) {
+							$offset += 2;
+						}
+
+						// Optional PTS
+						$marker4 = ord($MPEGstreamData[$offset]) >> 4;
+						if ($marker4 == 2) {
+							$offset += 5;
+						} else if ($marker4 == 3) {
+							$offset += 10;
+						} else {
+							$offset++;
+						}
+					}
+
+/*
 					$info['mpeg']['packed_elementary_streams'][$PackedElementaryStream['stream_type']][$PackedElementaryStream['stream_id']][] = $PackedElementaryStream;
 */
 					$getid3_temp = new GetID3();
 					$getid3_temp->openfile($this->getid3->filename, $this->getid3->info['filesize'], $this->getid3->fp);
 					$getid3_temp->info = $info;
 					$getid3_mp3 = new Mp3($getid3_temp);
-					for ($i = 0; $i <= 7; $i++) {
-						// some files have the MPEG-audio header 8 bytes after the end of the $00 $00 $01 $C0 signature, some have it up to 13 bytes (or more?) after
-						// I have no idea why or what the difference is, so this is a stupid hack.
-						// If anybody has any better idea of what's going on, please let me know - info@getid3.org
-						$getid3_temp->info = $info; // only overwrite real data if valid header found
-//echo 'audio at? '.($MPEGstreamBaseOffset + $StartCodeOffset + 4 + 8 + $i).'<br>';
-						if ($getid3_mp3->decodeMPEGaudioHeader($MPEGstreamBaseOffset + $StartCodeOffset + 4 + 8 + $i, $getid3_temp->info, false)) {
-//echo 'yes!<br>';
-							$info = $getid3_temp->info;
-							$info['audio']['bitrate_mode'] = 'cbr';
-							$info['audio']['lossless']     = false;
-							break;
-						}
+
+					$getid3_temp->info = $info; // only overwrite real data if valid header found
+					if ($getid3_mp3->decodeMPEGaudioHeader($MPEGstreamBaseOffset + $offset, $getid3_temp->info, false)) {
+						$info = $getid3_temp->info;
+						$info['audio']['bitrate_mode'] = 'cbr';
+						$info['audio']['lossless']     = false;
 					}
 					unset($getid3_temp, $getid3_mp3);
 					break;
