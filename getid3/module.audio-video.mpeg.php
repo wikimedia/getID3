@@ -77,17 +77,19 @@ class getid3_mpeg extends getid3_handler
 			switch ($StartCodeValue) {
 
 				case 0x00: // picture_start_code
-					$bitstream = getid3_lib::BigEndian2Bin(substr($MPEGstreamData, $StartCodeOffset + 4, 4));
-					$bitstreamoffset = 0;
+					if (!empty($info['mpeg']['video']['bitrate_mode']) && ($info['mpeg']['video']['bitrate_mode'] == 'vbr')) {
+						$bitstream = getid3_lib::BigEndian2Bin(substr($MPEGstreamData, $StartCodeOffset + 4, 4));
+						$bitstreamoffset = 0;
 
-					$PictureHeader = array();
+						$PictureHeader = array();
 
-					$PictureHeader['temporal_reference']  = self::readBitsFromStream($bitstream, $bitstreamoffset, 10); // 10-bit unsigned integer associated with each input picture. It is incremented by one, modulo 1024, for each input frame. When a frame is coded as two fields the temporal reference in the picture header of both fields is the same. Following a group start header the temporal reference of the earliest picture (in display order) shall be reset to zero.
-					$PictureHeader['picture_coding_type'] = self::readBitsFromStream($bitstream, $bitstreamoffset,  3); //  3 bits for picture_coding_type
-					$PictureHeader['vbv_delay']           = self::readBitsFromStream($bitstream, $bitstreamoffset, 16); // 16 bits for vbv_delay
-					//... etc
+						$PictureHeader['temporal_reference']  = self::readBitsFromStream($bitstream, $bitstreamoffset, 10); // 10-bit unsigned integer associated with each input picture. It is incremented by one, modulo 1024, for each input frame. When a frame is coded as two fields the temporal reference in the picture header of both fields is the same. Following a group start header the temporal reference of the earliest picture (in display order) shall be reset to zero.
+						$PictureHeader['picture_coding_type'] = self::readBitsFromStream($bitstream, $bitstreamoffset,  3); //  3 bits for picture_coding_type
+						$PictureHeader['vbv_delay']           = self::readBitsFromStream($bitstream, $bitstreamoffset, 16); // 16 bits for vbv_delay
+						//... etc
 
-					$FramesByGOP[$GOPcounter][] = $PictureHeader;
+						$FramesByGOP[$GOPcounter][] = $PictureHeader;
+					}
 					break;
 
 				case 0xB3: // sequence_header_code
@@ -128,6 +130,7 @@ class getid3_mpeg extends getid3_handler
 					$info['mpeg']['video']['pixel_aspect_ratio_text'] = self::videoAspectRatioTextLookup($info['mpeg']['video']['raw']['aspect_ratio_information']); // may be overridden later if file turns out to be MPEG-2
 					$info['mpeg']['video']['frame_rate']              =       self::videoFramerateLookup($info['mpeg']['video']['raw']['frame_rate_code']);
 					if ($info['mpeg']['video']['raw']['bitrate'] == 0x3FFFF) { // 18 set bits = VBR
+						//$this->warning('This version of getID3() ['.$this->getid3->version().'] cannot determine average bitrate of VBR MPEG video files');
 						$info['mpeg']['video']['bitrate_mode'] = 'vbr';
 					} else {
 						$info['mpeg']['video']['bitrate']      = $info['mpeg']['video']['raw']['bitrate'] * 400;
@@ -269,29 +272,27 @@ class getid3_mpeg extends getid3_handler
 
 				case 0xB8: // group_of_pictures_header
 					$GOPcounter++;
-					// it's this! if bitrate mode doesn't act as expected
-					// it won't count the header
-					// and so will skip over it to the next id
-					// what? did it think this inof was only needed for vbr?
-					$bitstream = getid3_lib::BigEndian2Bin(substr($MPEGstreamData, $StartCodeOffset + 4, 4)); // 27 bits needed for group_of_pictures_header
-					$bitstreamoffset = 0;
+					if (!empty($info['mpeg']['video']['bitrate_mode']) && ($info['mpeg']['video']['bitrate_mode'] == 'vbr')) {
+						$bitstream = getid3_lib::BigEndian2Bin(substr($MPEGstreamData, $StartCodeOffset + 4, 4)); // 27 bits needed for group_of_pictures_header
+						$bitstreamoffset = 0;
 
-					$GOPheader = array();
+						$GOPheader = array();
 
-					$GOPheader['byte_offset'] = $MPEGstreamBaseOffset + $StartCodeOffset;
-					$GOPheader['drop_frame_flag']    = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: drop_frame_flag
-					$GOPheader['time_code_hours']    = self::readBitsFromStream($bitstream, $bitstreamoffset,  5); //  5 bits for time_code_hours
-					$GOPheader['time_code_minutes']  = self::readBitsFromStream($bitstream, $bitstreamoffset,  6); //  6 bits for time_code_minutes
-					$marker_bit                      = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); // The term "marker_bit" indicates a one bit field in which the value zero is forbidden. These marker bits are introduced at several points in the syntax to avoid start code emulation.
-					$GOPheader['time_code_seconds']  = self::readBitsFromStream($bitstream, $bitstreamoffset,  6); //  6 bits for time_code_seconds
-					$GOPheader['time_code_pictures'] = self::readBitsFromStream($bitstream, $bitstreamoffset,  6); //  6 bits for time_code_pictures
-					$GOPheader['closed_gop']         = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: closed_gop
-					$GOPheader['broken_link']        = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: broken_link
+						$GOPheader['byte_offset'] = $MPEGstreamBaseOffset + $StartCodeOffset;
+						$GOPheader['drop_frame_flag']    = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: drop_frame_flag
+						$GOPheader['time_code_hours']    = self::readBitsFromStream($bitstream, $bitstreamoffset,  5); //  5 bits for time_code_hours
+						$GOPheader['time_code_minutes']  = self::readBitsFromStream($bitstream, $bitstreamoffset,  6); //  6 bits for time_code_minutes
+						$marker_bit                      = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); // The term "marker_bit" indicates a one bit field in which the value zero is forbidden. These marker bits are introduced at several points in the syntax to avoid start code emulation.
+						$GOPheader['time_code_seconds']  = self::readBitsFromStream($bitstream, $bitstreamoffset,  6); //  6 bits for time_code_seconds
+						$GOPheader['time_code_pictures'] = self::readBitsFromStream($bitstream, $bitstreamoffset,  6); //  6 bits for time_code_pictures
+						$GOPheader['closed_gop']         = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: closed_gop
+						$GOPheader['broken_link']        = self::readBitsFromStream($bitstream, $bitstreamoffset,  1); //  1 bit flag: broken_link
 
-					$time_code_separator = ($GOPheader['drop_frame_flag'] ? ';' : ':'); // While non-drop time code is displayed with colons separating the digit pairs "HH:MM:SS:FF" drop frame is usually represented with a semi-colon (;) or period (.) as the divider between all the digit pairs "HH;MM;SS;FF", "HH.MM.SS.FF"
-					$GOPheader['time_code'] = sprintf('%02d'.$time_code_separator.'%02d'.$time_code_separator.'%02d'.$time_code_separator.'%02d', $GOPheader['time_code_hours'], $GOPheader['time_code_minutes'], $GOPheader['time_code_seconds'], $GOPheader['time_code_pictures']);
+						$time_code_separator = ($GOPheader['drop_frame_flag'] ? ';' : ':'); // While non-drop time code is displayed with colons separating the digit pairs "HH:MM:SS:FF" drop frame is usually represented with a semi-colon (;) or period (.) as the divider between all the digit pairs "HH;MM;SS;FF", "HH.MM.SS.FF"
+						$GOPheader['time_code'] = sprintf('%02d'.$time_code_separator.'%02d'.$time_code_separator.'%02d'.$time_code_separator.'%02d', $GOPheader['time_code_hours'], $GOPheader['time_code_minutes'], $GOPheader['time_code_seconds'], $GOPheader['time_code_pictures']);
 
-					$info['mpeg']['group_of_pictures'][] = $GOPheader;
+						$info['mpeg']['group_of_pictures'][] = $GOPheader;
+					}
 					break;
 
 				case 0xC0: // audio stream
@@ -513,8 +514,8 @@ echo 'average_File_bitrate = '.number_format(array_sum($vbr_bitrates) / count($v
 				$overall_bitrate = getid3_lib::SafeDiv($info['avdataend'] - $info['avdataoffset'] * 8, $info['playtime_seconds']);
 				$info['video']['bitrate'] = $overall_bitrate - (isset($info['audio']['bitrate']) ? $info['audio']['bitrate'] : 0);
 			}
+			unset($info['mpeg']['group_of_pictures']);
 		}
-		unset($info['mpeg']['group_of_pictures']);
 
 		return true;
 	}
